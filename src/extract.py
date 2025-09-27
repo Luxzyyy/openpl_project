@@ -9,9 +9,8 @@ def get_openpowerlifting_data():
     with zipfile.ZipFile(BytesIO(response.content)) as z:
         csv_filename = [f for f in z.namelist() if f.endswith('.csv')][0]
         with z.open(csv_filename) as csvfile:
-            chunk_iter = pd.read_csv(csvfile, chunksize=500000)
-            chunk_one = next(chunk_iter)
-            print(chunk_one.head())
+            for chunk in pd.read_csv(csvfile, chunksize=500000):
+                yield chunk
 
 
-get_openpowerlifting_data()
+
