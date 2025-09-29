@@ -1,5 +1,5 @@
 pandas==2.3.2
 python-dotenv==1.1.1
-Requests==2.32.5
-SQLAlchemy==1.4.49
+requests==2.32.5
+
 

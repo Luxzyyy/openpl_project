@@ -1,41 +1,42 @@
-from extract import get_openpowerlifting_data
-from load import load_data_to_supabase
+import os
+import pandas as pd
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
-import pandas as pd
-import os
-
-# Load environment variables from .env
-load_dotenv()
-
-# Fetch variables
-USER = os.getenv("user")
-PASSWORD = os.getenv("password")
-HOST = os.getenv("host")
-PORT = os.getenv("port")
-DBNAME = os.getenv("dbname")
-
-# Construct the SQLAlchemy connection string
-DATABASE_URL = f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
-
-# Create the SQLAlchemy engine
-engine = create_engine(DATABASE_URL)
-
-# Test the connection
-try:
-    with engine.connect() as connection:
-        print("Connection successful!")
-
-except Exception as e:
-    print(f"Failed to connect: {e}")
+from extract import get_openpowerlifting_data
+from load import load_data_to_supabase
 
 
-# Upload data in chunks
-chunk_iter = get_openpowerlifting_data()
+def main():
+    # Load environment variables from .env file
+    load_dotenv(dotenv_path="/opt/airflow/.env")
 
-print(next(chunk_iter).head())  # Print the first few rows of the first chunk to verify
+    # Fetch and validate env vars
+    USER = os.getenv("SUPABASE_DB_USER")
+    PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
+    HOST = os.getenv("SUPABASE_DB_HOST")
+    PORT = os.getenv("SUPABASE_DB_PORT", "5432")
+    DBNAME = os.getenv("SUPABASE_DB_NAME")
 
-for i, chunk in enumerate(chunk_iter):
-    print(f"Loading chunk {i+1}")
-    load_data_to_supabase(chunk, "openpl", engine)
+    if not all([USER, PASSWORD, HOST, PORT, DBNAME]):
+        raise EnvironmentError("Missing one or more required environment variables.")
 
+    # SQLAlchemy connection string
+    DATABASE_URL = f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
+
+    # Create engine
+    engine = create_engine(DATABASE_URL)
+
+    # Test DB connection
+    try:
+        with engine.connect() as conn:
+            print("✅ Connected to Supabase PostgreSQL")
+    except Exception as e:
+        print(f"❌ Failed to connect to DB: {e}")
+        return
+
+    # Load CSV data in chunks
+    chunk_iter = get_openpowerlifting_data()
+
+    for i, chunk in enumerate(chunk_iter, 1):
+        print(f"🔄 Loading chunk {i}...")
+        load_data_to_supabase(chunk, "openpl", engine)
